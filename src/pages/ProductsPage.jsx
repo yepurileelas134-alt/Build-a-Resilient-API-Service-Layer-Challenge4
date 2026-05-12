@@ -4,9 +4,9 @@
 
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { getProducts, getCategories, addToCart } from '../services/api'
 
-// ❌ BAD: API URL hardcoded at the top — what if it changes?
-const BASE_URL = 'https://fakestoreapi.com'
+// API URL was removed, handled by api.js service
 
 const enrich = (p) => ({
   ...p,
@@ -29,46 +29,31 @@ export default function ProductsPage() {
   // ❌ BAD: Raw fetch with no interceptors, no token injection, inconsistent error handling
   useEffect(() => {
     setLoading(true)
-    fetch('https://fakestoreapi.com/products') // hardcoded again!
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to load products')
-        return res.json()
-      })
+    getProducts()
       .then(data => {
         setProducts(data.map(enrich))
         setLoading(false)
       })
       .catch(err => {
-        setError(err.message) // no global error handler — each component reinvents the wheel
+        setError(err.message)
         setLoading(false)
       })
   }, [])
 
   // ❌ BAD: Second separate fetch — duplicated pattern, no code sharing
   useEffect(() => {
-    fetch('https://fakestoreapi.com/products/categories') // another hardcoded URL
-      .then(res => res.json()) // not even checking res.ok!
+    getCategories()
       .then(data => setCategories(['all', ...data]))
-      .catch(err => console.error('Failed to load categories:', err)) // silently failing!
+      .catch(err => console.error('Failed to load categories:', err))
   }, [])
 
   // ❌ BAD: Token grabbed manually every time, copy-pasted pattern
   const handleAddToCart = (product) => {
-    const token = localStorage.getItem('auth_token')
-
-    fetch('https://fakestoreapi.com/carts', { // URL #3 hardcoded
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`, // repeated in every component
-      },
-      body: JSON.stringify({
-        userId: 1,
-        date: new Date().toISOString(),
-        products: [{ productId: product.id, quantity: 1 }],
-      }),
+    addToCart({
+      userId: 1,
+      date: new Date().toISOString(),
+      products: [{ productId: product.id, quantity: 1 }],
     })
-      .then(res => res.json())
       .then(() => {
         setCart(prev => [...prev, product.id])
         setCartMsg(`Added "${product.title.slice(0, 25)}..."`)
