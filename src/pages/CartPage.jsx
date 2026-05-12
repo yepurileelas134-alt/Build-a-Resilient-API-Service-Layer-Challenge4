@@ -1,6 +1,7 @@
 // 🚨 BROKEN: Cart page also doing its own fetch — third different pattern in the codebase!
 
 import { useState, useEffect } from 'react'
+import { getCart, getProductById, deleteCart } from '../services/api'
 
 export default function CartPage() {
   const [cart, setCart] = useState(null)
@@ -10,8 +11,7 @@ export default function CartPage() {
 
   // ❌ Yet another hardcoded URL — count how many exist in this codebase!
   useEffect(() => {
-    fetch(`https://fakestoreapi.com/carts/user/1`)
-      .then(res => res.json()) // ❌ Not checking res.ok at all!
+    getCart(1)
       .then(async (carts) => {
         if (!carts || carts.length === 0) {
           setCart({ products: [] })
@@ -22,8 +22,7 @@ export default function CartPage() {
         // ❌ Nested fetches — very hard to read and maintain
         const productDetails = await Promise.all(
           latest.products.map(item =>
-            fetch(`https://fakestoreapi.com/products/${item.productId}`) // URL #5!
-              .then(r => r.json())
+            getProductById(item.productId)
               .then(p => ({ ...p, quantity: item.quantity }))
           )
         )
@@ -38,12 +37,8 @@ export default function CartPage() {
 
   const handleRemove = async (productId) => {
     setRemoving(productId)
-    const token = localStorage.getItem('auth_token') // AGAIN manual token retrieval
     try {
-      await fetch(`https://fakestoreapi.com/carts/${cart.id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
-      })
+      await deleteCart(cart.id)
       setCart(prev => ({ ...prev, productDetails: prev.productDetails.filter(p => p.id !== productId) }))
     } catch (err) {
       alert('Remove failed: ' + err.message) // alert() again!
